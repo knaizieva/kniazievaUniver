@@ -6,6 +6,9 @@ define([], function() {
     "LibraryFieldLabel": "Library",
     "PlanFieldLabel" : "Plan",
     "GroupFieldLabel": "Group",
-    "CreateReportButton": "Create report"
+    "CreateReportButton": "Create report",
+    "Loading": "Loading",
+    "SegmentLabel": "Segment",
+    "TasksLabel": "Tasks"
   }
 });

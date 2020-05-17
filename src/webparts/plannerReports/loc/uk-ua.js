@@ -6,6 +6,9 @@ define([], function() {
       "LibraryFieldLabel": "Библиотека",
       "PlanFieldLabel" : "План",
       "GroupFieldLabel": "Група",
-      "CreateReportButton": "Створити звіт"
+      "CreateReportButton": "Створити звіт",
+      "Loading": "Завантаження",
+      "SegmentLabel": "Сегмент",
+      "TasksLabel": "Задачі"
     }
   });

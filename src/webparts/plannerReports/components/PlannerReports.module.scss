@@ -1,5 +1,7 @@
 @import '~office-ui-fabric-react/dist/sass/References.scss';
-
+.displayFlex {
+  display: flex;
+}
 .plannerReports {
   .container {
     max-width: 100%;
@@ -11,6 +13,7 @@
     @include ms-fontColor-white;
     background-color: $ms-color-white;
     padding: 20px;
+    display: flex;
   }
 
   .column {
