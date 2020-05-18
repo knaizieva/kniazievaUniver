@@ -9,4 +9,5 @@ export interface IPlannerReportsProps {
   getTaskDetails: (taskId:string) => Promise<MicrosoftGraph.PlannerTaskDetails>;
   getBuckets: (planId:string) => Promise<MicrosoftGraph.PlannerBucket[]>;
   getBucketTasks: (bucketId: string | number) => Promise<MicrosoftGraph.PlannerTask[]>;
+  saveFile: (file: any, size: number, fileName:string) => void;
 }

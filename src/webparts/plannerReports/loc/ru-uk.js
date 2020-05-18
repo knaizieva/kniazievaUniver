@@ -9,6 +9,7 @@ define([], function() {
       "CreateReportButton": "Создать отчет",
       "Loading": "Загрузка",
       "SegmentLabel": "Сегмент",
-      "TasksLabel": "Задачи"
+      "TasksLabel": "Задачи",
+      "CompletedTaskLabel": "Только завершенные задачи"
     }
   });

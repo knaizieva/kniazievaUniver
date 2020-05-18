@@ -9,6 +9,7 @@ define([], function() {
     "CreateReportButton": "Create report",
     "Loading": "Loading",
     "SegmentLabel": "Segment",
-    "TasksLabel": "Tasks"
+    "TasksLabel": "Tasks",
+    "CompletedTaskLabel": "Completed task only"
   }
 });

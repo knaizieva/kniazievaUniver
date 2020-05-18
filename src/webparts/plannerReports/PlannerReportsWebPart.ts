@@ -22,10 +22,13 @@ import { IPlannerReportsProps } from './components/IPlannerReportsProps';
 import { sp } from '@pnp/sp';
 import '@pnp/sp/lists';
 import "@pnp/sp/webs";
+import "@pnp/sp/files";
+import "@pnp/sp/folders";
 import { ThemeSettingName, List } from 'office-ui-fabric-react';
 import { MSGraphClient } from '@microsoft/sp-http';
 import * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
 import { IListInfo } from '@pnp/sp/lists';
+import { _Folder, IFolderInfo } from '@pnp/sp/folders/types';
 
 export interface IPlannerReportsWebPartProps {
   description: string;
@@ -50,6 +53,7 @@ export default class PlannerReportsWebPart extends BaseClientSideWebPart<IPlanne
     this.getTaskDetails = this.getTaskDetails.bind(this);
     this.getBuckets = this.getBuckets.bind(this);
     this.getBucketTasks = this.getBucketTasks.bind(this);
+    this.saveFile = this.saveFile.bind(this);
   }
 
   public render(): void {
@@ -63,7 +67,8 @@ export default class PlannerReportsWebPart extends BaseClientSideWebPart<IPlanne
         getTasks: this.getTasks,
         getTaskDetails: this.getTaskDetails,
         getBuckets: this.getBuckets,
-        getBucketTasks: this.getBucketTasks
+        getBucketTasks: this.getBucketTasks,
+        saveFile: this.saveFile
       }
     );
 
@@ -87,6 +92,20 @@ export default class PlannerReportsWebPart extends BaseClientSideWebPart<IPlanne
     });
   }
 
+  private saveFile(file: any, size: number, fileName:string)
+  {
+    if(!this.properties.library) {
+      return;
+    }
+    sp.web.lists.getById(this.properties.library).rootFolder.files
+    .add(fileName, file, true)
+    .then(r => {
+      let rr = r;
+    }).catch(e => {
+      let err = e;
+    });
+  }
+
   protected getBucketTasks(bucketId: string | number): Promise<MicrosoftGraph.PlannerTask[]> {
     return new Promise<MicrosoftGraph.PlannerTask[]>((resolve, reject) => {
       if (!bucketId) {
@@ -95,7 +114,8 @@ export default class PlannerReportsWebPart extends BaseClientSideWebPart<IPlanne
       this.context.msGraphClientFactory
         .getClient()
         .then((client: MSGraphClient): void => {
-          client.api(`planner/buckets/${bucketId}/tasks`).get()
+          client.api(`planner/buckets/${bucketId}/tasks`)
+          .get()
           .then(resp => {
             resolve(resp.value as MicrosoftGraph.PlannerTask[]);
           }).catch(err => {
@@ -105,7 +125,7 @@ export default class PlannerReportsWebPart extends BaseClientSideWebPart<IPlanne
     });
   }
 
-  protected getTasks(planId: string, segmentId?:string | number): Promise<MicrosoftGraph.PlannerTask[]> {
+  protected getTasks(planId: string): Promise<MicrosoftGraph.PlannerTask[]> {
     
     return new Promise<MicrosoftGraph.PlannerTask[]>((resolve, reject) => {
       if (!planId) {

@@ -9,6 +9,7 @@ declare interface IPlannerReportsWebPartStrings {
   Loading: string;
   SegmentLabel: string;
   TasksLabel: string;
+  CompletedTaskLabel: string;
 }
 
 declare module 'PlannerReportsWebPartStrings' {
