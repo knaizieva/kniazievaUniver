@@ -10,6 +10,11 @@ define([], function() {
       "Loading": "Загрузка",
       "SegmentLabel": "Сегмент",
       "TasksLabel": "Задачи",
-      "CompletedTaskLabel": "Только завершенные задачи"
+      "CompletedTaskLabel": "Только завершенные задачи",
+      "SetWebPartPropsMessage": "Для использования веб части настройте свойства",
+      "SetPropertiesLabel": "Настроить свойства",
+      "FileCreatedMessage": "Файл создан",
+      "FileLabel": "Файл",
+      "FileNotCreatedMessage": "Ошибка при создании файла"
     }
   });

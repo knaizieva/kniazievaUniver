@@ -1,5 +1,8 @@
 import * as React from 'react';
-import { DefaultButton, PrimaryButton, Stack, IStackTokens, Label, FontSizes } from 'office-ui-fabric-react';
+import {
+  DefaultButton, PrimaryButton, Stack, IStackTokens, MessageBar,
+  MessageBarType, Label, FontSizes, MessageBarButton, ProgressIndicator, Link
+} from 'office-ui-fabric-react';
 import * as strings from 'PlannerReportsWebPartStrings';
 import styles from './PlannerReports.module.scss';
 import { IPlannerReportsProps } from './IPlannerReportsProps';
@@ -9,7 +12,7 @@ import * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
 import { Dropdown, DropdownMenuItemType, IDropdownOption, IDropdownStyles } from 'office-ui-fabric-react/lib/Dropdown';
 import { Checkbox, ICheckboxProps } from 'office-ui-fabric-react/lib/Checkbox';
 import * as docx from "docx";
-const { TextRun, Document, Packer, Paragraph, Table, TableCell, TableRow } = docx;
+import { TextRun, Document, Packer, Paragraph, Table, TableCell, TableRow } from "docx";
 
 interface IPlannerReportsState {
   loading: boolean;
@@ -19,10 +22,13 @@ interface IPlannerReportsState {
   selectedTasks?: string[];
   onlyCompletedTaskChecked?: boolean;
   allTaskChecked?: boolean;
+  erroMessage?: string;
+  successfulMessage?: string;
+  fileLink?: string;
 }
 const dropdownStyles: Partial<IDropdownStyles> = {
   root: { display: "flex" },
-  dropdown: { minWidth: 200 }, label: { paddingRight: "5px" }
+  dropdown: { minWidth: 200, maxWidth: 400 }, label: { paddingRight: "5px" }
 };
 export default class PlannerReports extends React.Component<IPlannerReportsProps, IPlannerReportsState> {
   private rawTasks: MicrosoftGraph.PlannerTask[];
@@ -34,6 +40,9 @@ export default class PlannerReports extends React.Component<IPlannerReportsProps
     this.onTaskChange = this.onTaskChange.bind(this);
     this.onOnlyFinishedTaskChecked = this.onOnlyFinishedTaskChecked.bind(this);
     this.createAndSaveDocx = this.createAndSaveDocx.bind(this);
+    this.onSetPropertiesClick = this.onSetPropertiesClick.bind(this);
+    this.onErrorMessDismiss = this.onErrorMessDismiss.bind(this);
+    this.onSuccessMessDismiss = this.onSuccessMessDismiss.bind(this);
     this.state = { loading: false, allTaskChecked: true };
   }
 
@@ -94,20 +103,98 @@ export default class PlannerReports extends React.Component<IPlannerReportsProps
 
   private onOnlyFinishedTaskChecked(event, checked: boolean): void {
     this.setState({ onlyCompletedTaskChecked: checked });
+
+    let taskOpts: IDropdownOption[] = this.rawTasks
+      .filter(v => {
+        if (checked) {
+          return v.percentComplete == 100;
+        }
+        return true;
+      })
+      .map(t => { return { key: t.id, text: t.title }; });
+    this.setState({ taskOptions: taskOpts });
+
   }
-  private onAllTaskChecked(event, checked: boolean):void {
+  private onAllTaskChecked(event, checked: boolean): void {
 
   }
 
   public render(): React.ReactElement<IPlannerReportsProps> {
     let p = this.props;
+    if (!this.props.group || !this.props.library || !this.props.plan) {
+      return this.getSetPropertiesMessage();
+    } else {
+      return this.getBody();
+    }
+
+  }
+
+  private onSetPropertiesClick(): void {
+    this.props.showPropertyPane();
+  }
+
+  public getSetPropertiesMessage(): JSX.Element {
     return (
       <div className={styles.plannerReports}>
         <div className={styles.container}>
           <div className={styles.row}>
             <div className={styles.column}>
+              <MessageBar
+                messageBarType={MessageBarType.warning}
+                isMultiline={false}
+                //onDismiss={p.resetChoice}
+                dismissButtonAriaLabel="Close"
+                actions={
+                  <div>
+                    <MessageBarButton onClick={this.onSetPropertiesClick}>{strings.SetPropertiesLabel}</MessageBarButton>
+                  </div>
+                }
+              >
+                {strings.SetPropertiesLabel}
+              </MessageBar>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  private onErrorMessDismiss(): void {
+    this.setState({ erroMessage: null });
+  }
+  private onSuccessMessDismiss(): void {
+    this.setState({ successfulMessage: null, fileLink: null });
+  }
+  public getBody(): JSX.Element {
+    return (
+      <div className={styles.plannerReports}>
+        <div className={styles.container}>
+          <div>
+            {this.state.loading ? <ProgressIndicator /> : null}
+            {!!this.state.erroMessage ? <MessageBar
+              messageBarType={MessageBarType.error}
+              isMultiline={false}
+              onDismiss={this.onErrorMessDismiss}
+              dismissButtonAriaLabel="Close"
+            >
+              {this.state.erroMessage}
+            </MessageBar> : null}
+            {!!this.state.successfulMessage ? <MessageBar
+              messageBarType={MessageBarType.success}
+              isMultiline={false}
+              onDismiss={this.onSuccessMessDismiss}
+              actions={<Link href={this.state.fileLink} target="_blank">
+              {strings.FileLabel}
+            </Link>}
+            >
+              {this.state.successfulMessage}
+            </MessageBar> : null}
+          </div>
+          <div className={styles.row}>
+            <div className={styles.column}>
               <DefaultButton onClick={this.createAndSaveDocx}
-                text={this.state.loading ? strings.Loading + "..." : strings.CreateReportButton} />
+                disabled={this.state.loading || !this.state.selectedSegment}
+                text={strings.CreateReportButton} />
             </div>
             <div className={styles.column}>
               <Dropdown
@@ -141,6 +228,7 @@ export default class PlannerReports extends React.Component<IPlannerReportsProps
       </div>
     );
   }
+
   public componentDidMount(): void {
     if (this.props.plan) {
       this.getBuckets();
@@ -151,16 +239,102 @@ export default class PlannerReports extends React.Component<IPlannerReportsProps
       this.getBuckets();
     }
   }
-  private createAndSaveDocx(): void {
+  private async createAndSaveDocx() {
+    this.setState({ loading: true });
+    let reportRows: MicrosoftGraph.PlannerTask[];
+    if (this.state.selectedTasks && this.state.selectedTasks.length > 0) {
+      reportRows = this.rawTasks.filter(rt => {
+        return this.state.selectedTasks.some(v => {
+          return rt.id === v;
+        });
+      });
+    } else if(this.state.onlyCompletedTaskChecked){
+      reportRows = this.rawTasks.filter(v => v.percentComplete == 100);
+    } else {
+      reportRows = this.rawTasks;
+    }
 
-   // let tableRows: TableRow[] = [];
+    const cellMargin = { top: 50, right: 100, bottom: 50, left: 100 };
+    const tableRows: Array<TableRow> = [];
+    tableRows.push(new TableRow({
+      children: [
+        new TableCell({
+          margins: cellMargin,
+          children: [new Paragraph({
+            children: [
+              new TextRun({
+                text: "Задача",
+                size: 28,
+                bold: true
+              })
+            ]
+          }
+          )],
+        }),
+        new TableCell({
+          margins: cellMargin,
+          children: [new Paragraph({
+            children: [
+              new TextRun({
+                text: "Дата завершення",
+                size: 28,
+                bold: true
+              })
+            ]
+          }
+          )],
+        }),
+        new TableCell({
+          margins: cellMargin,
+          children: [new Paragraph({
+            children: [
+              new TextRun({
+                text: "Виконання",
+                size: 28,
+                bold: true
+              })
+            ]
+          }
+          )],
+        })
+      ]
+    }));
 
-
-
+    for (let task of reportRows) {
+      let taskProgress;
+      if (task.percentComplete === 0) {
+        taskProgress = "Не розпочато";
+      } else if (task.percentComplete > 0 && task.percentComplete < 100) {
+        taskProgress = "На виконанні";
+      } else {
+        taskProgress = "Виконано";
+      }
+      tableRows.push(new TableRow({
+        children: [
+          new TableCell({
+            margins: cellMargin,
+            children: [new Paragraph(task.title)],
+          }),
+          new TableCell({
+            margins: cellMargin,
+            children: [new Paragraph(task.dueDateTime ? new Date(task.dueDateTime).toLocaleString() : "Не встановлено")],
+          }),
+          new TableCell({
+            margins: cellMargin,
+            children: [new Paragraph(`${taskProgress}`)],
+          })
+        ]
+      }));
+    }
 
     const table = new Table({
-      rows: []
-  });
+      rows: tableRows,
+      width: {
+        size: 100,
+        type: docx.WidthType.PERCENTAGE,
+      }
+    });
+
 
     const doc = new Document();
     let date: Date = new Date();
@@ -222,6 +396,10 @@ export default class PlannerReports extends React.Component<IPlannerReportsProps
           alignment: docx.AlignmentType.CENTER
         }),
         new Paragraph({
+          spacing: {
+            before: 200,
+            after: 200
+          },
           children: [
             new TextRun({
               text: this.state.selectedSegment.text,
@@ -229,13 +407,21 @@ export default class PlannerReports extends React.Component<IPlannerReportsProps
               bold: true
             })
           ],
-          alignment: docx.AlignmentType.CENTER
-        })
-
+          alignment: docx.AlignmentType.CENTER,
+          pageBreakBefore: true
+        }),
+        table
       ]
     });
-    Packer.toBuffer(doc).then(buf => {
-      this.props.saveFile(buf, buf.byteLength, `Test_${date.getDate()}_${date.getMonth()}_${date.getFullYear()}.docx`);
-    });
+    try {
+      let buf = await Packer.toBuffer(doc);
+      let resp: any = await this.props.saveFile(buf, buf.byteLength,
+        `${this.state.selectedSegment.text}_${date.getDate()}_${date.getMonth()}_${date.getFullYear()}.docx`);
+      this.setState({ loading: false, successfulMessage: strings.FileCreatedMessage, fileLink: resp.data.LinkingUri });
+    } catch (error) {
+      this.setState({ erroMessage: strings.FileNotCreatedMessage });
+      this.setState({ loading: false });
+    }
+
   }
 }

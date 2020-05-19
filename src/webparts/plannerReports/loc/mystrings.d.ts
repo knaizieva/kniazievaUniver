@@ -10,6 +10,11 @@ declare interface IPlannerReportsWebPartStrings {
   SegmentLabel: string;
   TasksLabel: string;
   CompletedTaskLabel: string;
+  SetWebPartPropsMessage: string;
+  SetPropertiesLabel: string;
+  FileCreatedMessage: string;
+  FileLabel:string;
+  FileNotCreatedMessage: string;
 }
 
 declare module 'PlannerReportsWebPartStrings' {

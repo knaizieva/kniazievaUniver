@@ -29,6 +29,7 @@ import { MSGraphClient } from '@microsoft/sp-http';
 import * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
 import { IListInfo } from '@pnp/sp/lists';
 import { _Folder, IFolderInfo } from '@pnp/sp/folders/types';
+import { IFileAddResult } from '@pnp/sp/files';
 
 export interface IPlannerReportsWebPartProps {
   description: string;
@@ -54,6 +55,7 @@ export default class PlannerReportsWebPart extends BaseClientSideWebPart<IPlanne
     this.getBuckets = this.getBuckets.bind(this);
     this.getBucketTasks = this.getBucketTasks.bind(this);
     this.saveFile = this.saveFile.bind(this);
+    this.showPropertyPane = this.showPropertyPane.bind(this);
   }
 
   public render(): void {
@@ -68,7 +70,8 @@ export default class PlannerReportsWebPart extends BaseClientSideWebPart<IPlanne
         getTaskDetails: this.getTaskDetails,
         getBuckets: this.getBuckets,
         getBucketTasks: this.getBucketTasks,
-        saveFile: this.saveFile
+        saveFile: this.saveFile,
+        showPropertyPane: this.showPropertyPane
       }
     );
 
@@ -91,18 +94,21 @@ export default class PlannerReportsWebPart extends BaseClientSideWebPart<IPlanne
         });
     });
   }
-
-  private saveFile(file: any, size: number, fileName:string)
-  {
-    if(!this.properties.library) {
-      return;
+  private showPropertyPane(): void {
+    if(!this.context.propertyPane.isPropertyPaneOpen()) {
+      this.context.propertyPane.open();
     }
-    sp.web.lists.getById(this.properties.library).rootFolder.files
-    .add(fileName, file, true)
-    .then(r => {
-      let rr = r;
-    }).catch(e => {
-      let err = e;
+  }
+  private saveFile(file: any, size: number, fileName:string): Promise<IFileAddResult>
+  {
+    return new Promise<IFileAddResult>((resolve, reject) => {
+      sp.web.lists.getById(this.properties.library).rootFolder.files
+      .add(fileName, file, true)
+      .then(r => {
+        resolve(r);
+      }).catch(e => {
+        reject(e);
+      });
     });
   }
 
